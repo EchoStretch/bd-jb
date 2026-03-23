@@ -7,6 +7,7 @@
 
 package com.bdjb;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,19 +15,24 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.lang.reflect.Method;
+import javax.tv.xlet.XletContext;
 import org.dvb.lang.DVBClassLoader;
 
 class Loader implements Runnable {
-  private static final String MNT_ADA_JAR_FILE = "/OS/HDD/download0/mnt_ada/00000.jar";
-
   private static final String EXPLOIT_CLASS_NAME = "com.bdjb.Exploit";
   private static final String MAIN_METHOD_NAME = "main";
   private static final String PRINTLN_METHOD_NAME = "println";
 
   private static final int JAR_PORT = 9025;
 
-  static void startLoader() {
-    new Thread(new Loader()).start();
+  private final XletContext context;
+
+  Loader(XletContext context) {
+    this.context = context;
+  }
+
+  static void startLoader(XletContext context) {
+    new Thread(new Loader(context)).start();
   }
 
   public void run() {
@@ -36,10 +42,17 @@ class Loader implements Runnable {
       try {
         Screen.println("[*] Listening for JAR on port " + JAR_PORT + "...");
 
+        String jarFile =
+            System.getProperty("dvb.persistent.root")
+                + File.separator
+                + context.getXletProperty("dvb.org.id")
+                + File.separator
+                + "00000.jar";
+
         ServerSocket serverSocket = new ServerSocket(JAR_PORT);
         Socket socket = serverSocket.accept();
         InputStream inputStream = socket.getInputStream();
-        OutputStream outputStream = new FileOutputStream(MNT_ADA_JAR_FILE);
+        OutputStream outputStream = new FileOutputStream(jarFile);
 
         byte[] buf = new byte[8192];
         int total = 0;
@@ -59,7 +72,7 @@ class Loader implements Runnable {
         Screen.println("[+] Launching JAR...");
 
         DVBClassLoader dvbClassLoader =
-            DVBClassLoader.newInstance(new URL[] {new URL("file://" + MNT_ADA_JAR_FILE)});
+            DVBClassLoader.newInstance(new URL[] {new URL("file://" + jarFile)});
         Class exploitClass = dvbClassLoader.loadClass(EXPLOIT_CLASS_NAME);
         Method exploitMain = exploitClass.getMethod(MAIN_METHOD_NAME, new Class[] {Method.class});
         Method screenPrintln =
